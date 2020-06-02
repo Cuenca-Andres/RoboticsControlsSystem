@@ -1,0 +1,403 @@
+%Title: MATLAB Program computing joint torque values of RRPR (revolute, revolute, prismatic, revolute) robot.
+Written by: Andres Eduardo Cuenca
+%Date: 05/05/20
+%Objective: This program applies the inverse dynamics to compute the DC motor joint torques and forces
+%Given the joint displacements, angular velocities and angular acceleration are given.
+% This program is purely simulation and is applied for a SCARA (RRPR) robot.
+% The data was collected using an Arduino PID program to execute a DC motor to turn
+% at desire angular position.
+% The angular position, velocity and acceleration were determined in the PID program
+% and transposed to an Excel sheet.
+
+
+%Import data from Excel sheet
+%This excel sheet should have the following:
+%time, angular position, angular velocity and angular acceleration.
+motor1data = xlsread('dc_motor_j1_data.xls');
+
+%organize data base on respective column
+time = motor1data(:,1); %store column one 'time' to variable
+AngPos = motor1data(:,2); %store column two 'angular position' to variable
+AngVel = motor1data(:,4); %store column three 'angular velocity' to variable
+AngAcc = motor1data(:,5);  %store column four 'angular acceleration' to variable
+
+
+%% Joint 1 Velocity Propagation
+% First joint rotates relative to the z-axis
+% create empty arrays
+th1dot = length(time);
+th1_2dot = length(time);
+w1_1 = length(time);
+v1_1 = length(time);
+angle_th1 = 100; %chosen setpoint angular position value for the revolute joint
+
+% create for loop to store joint velocities and acceleration to proper variables
+for i=1:length(time)
+th1dot(i) = AngVel(i); %angular velocity (rad/s) set equal to joint 1 theta dot 1
+th1_2dot(i) = AngAcc(i); %angular acceleration (rad/s^2) set equal to joint 1 theta double dot 1
+end
+
+w0_0 = [0 0 0].'; %initial angular speed of motor shaft, 0 rad/s
+v0_0 = 0; %initial linear velocity
+ Z1_1 = [0 0 1].'; % relative to z-axis
+ p0_1 = [3*cos(angle_th1)/20 -3*sin(angle_th1)/20 0].'; %position of joint 1
+ g = 9.81; % m/(s^2) %gravitiy
+
+mat_w1_1 = zeros(3,length(time)); %create a matrix of zeroes
+mat_v1_1 = zeros(3,length(time)); %create a matrix of zeroes
+
+%3x3 matrix representing the rotation of linkage 1 relative to the desire angular position
+R0_1 = [cosd(angle_th1) -sind(angle_th1) 0;
+        sind(angle_th1) cosd(angle_th1) 0;
+        0 0 1];
+
+for i=1:length(th1dot)
+mat_w1_1(:,i) = R0_1*w0_0+th1dot(i)*Z1_1; % angular speed of link 1
+mat_v1_1(:,i) = R0_1*(v0_0 + cross(w0_0,p0_1)); %linear speed of link 1
+
+end
+
+%% Acceleration  Linkage 1 of RRPR robot
+% assume the linkages start from an initial rest
+ wdot0_0 = [0 0 0].'; %initial angular acceleration of link 1
+ vdot0_0 = [0 0 0].'; %initial linear velocity of link 1
+ mat_wdot1_1 = zeros(3,length(time));
+ c = cross(w0_0,p0_1); % cross multiply matrices
+
+ for i=1:length(time)
+    mat_wdot1_1(:,i) = R0_1*wdot0_0+cross(R0_1*mat_w1_1(:,i),th1dot(i)*Z1_1)+th1_2dot(i)*Z1_1; %  %linear velocity of linakge 1 stored in a matrix
+ end
+
+
+
+%% Center of Mass of Linkage 1 of RRPR
+%information was taken from SolidWorks CAD model of the RRPR robot.
+PC1 = [0.12427 0 -0.02808].'; %m center of mass of link 1 (revolute)
+%link 1, revolute
+
+
+a = zeros(3,length(time)); %zeroes stored to a place holder variable 'a'
+Vc1_1dot = zeros(3,length(time)); %create matrix of zeroes for velocity of linkage one
+for i=1:length(time)
+   a(:,i) = cross(mat_w1_1(:,i),PC1);
+   Vc1_1dot(:,i) = vdot1_1+ cross(mat_wdot1_1(:,i),PC1)+cross(mat_w1_1(:,i),a(:,i)); %create center of mass velocity of linkage 1
+end
+
+
+
+%% Inertia of Linkage 1
+% inertia was computed on SolidWorks
+% create a 3x3 matrix
+I1 = [0.0003721006 0.00 -0.00012455;
+    0 0.0022353517 0.00;
+    -0.0001245457 0.00 0.0020952503]; % kg *m^-2 relative to xz-axis ,yz-axis,and zz-axis
+
+%% Joint 1 Torque: revolute 1
+m1 = 0.53936; % kg, total mass of linkage 1
+f0_0 = [0 0 0].'; % no force acting on the base
+
+F1_1 = zeros(3,length(time)); %create matrix for the inertia force of linkage 1
+f1_1 = zeros(3,length(time)); %create matrix for the total force acting on linkage 1
+N1_1 = zeros(3,length(time)); %total inertia force on linkage 1
+n1_1 = zeros(3,length(time)); %inertia torque  acting on linkage 1
+Tor_joint1 = length(time); % create array for the joint torque for linakge 1
+
+for i=1:length(time)
+F1_1(:,i) = 0.53936 * Vc1_1dot(:,i); % mass x acceleration
+f1_1(:,i) = R0_1.'*f0_0+ F1_1(:,i); % sum of the force
+N1_1(:,i) = I1*mat_wdot1_1(:,i)+cross(mat_w1_1(:,i),I1*mat_w1_1(:,i)); %total inertia force acting on linkage 1
+n1_1(:,i) = N1_1(:,i) + cross(PC1,F1_1(:,i))+cross(p0_1,R0_1.'*f1_1(:,i)); %generated joint force on linkage 1 in respect to z-axis
+Tor_joint1(i) = n1_1(:,i).'*Z1_1; % joint torque acting on linkage 1
+end
+
+%Tj1 = Tor_joint1.'; %joint torque of linkage 1
+
+%% Joint 2: Revolute second joint
+% Second joint rotates rotate relative to z-axis
+motor2data = xlsread('dc_motor2_j2.xls'); %import data from Excel spreadsheet
+
+%organize data base on respective column
+time2 = motor2data(:,1); %store column one 'time2' to variable
+AngPos2 = motor2data(:,2); %store column two 'angular position' to variable
+AngVel2 = motor2data(:,3); %store column three 'angular velocity' to variable
+AngAcc2 = motor2data(:,4); %store column four 'angular acceleration' to variable
+
+% Joint 2 Velocity Propragation, Joint 2 speed and acceleration generated by 2nd DC motor
+th2dot = length(time2); %dc motor angular speed
+th2_2dot = length(time2); %dc motor angular acceleration
+mat_w2_2 = zeros(3,length(time2)); %create matrix for angular velocity of joint 2
+mat_v2_2 = zeros(3,length(time2)); %create matrix for linear velocity of joint 2
+angle_th2 = 40;  %desire motor shaft position
+
+for i=1:length(time2)
+
+	th2dot(i) = AngVel2(i); %angular velocity (rad/s) on joint 2
+	th2_2dot(i) = AngAcc2(i); %angular acceleration (rad/s^2) on link 2
+
+end
+
+%rotation of joint 2
+R1_2 = [cosd(angle_th2) sind(angle_th2) 0;
+        -sind(angle_th2) -cosd(angle_th2) 0;
+        0 0 -1];
+
+% x,y and z point of joint 2
+p1_2 = [ cosd(angle_th2)/8;
+         sind(angle_th2)/8;
+         -3/100];
+
+%compute angular and linear velocity for linkage 2
+for i=1:length(time2)
+    mat_w2_2(:,i) = R1_2*mat_w1_1(:,i)+th2dot(i)*Z1_1; %angular speed of linakge 2
+    mat_v2_2(:,i) = R1_2*(mat_v1_1(:,i) + cross(mat_w1_1(:,i),p1_2));  %linear speed of linkage 2
+end
+
+
+
+%% acceleration of Linkage 2
+mat_wdot2_2 = zeros(3,length(time2)); %create matrix for the angular acceleration, linkage 2
+mat_vdot2_2 = zeros(3,length(time2)); %create matrix for the linear acceleration, linkage 2
+d = zeros(3,length(time2)); %create matrix to act as place holder
+
+
+%compute angular and linear acceleration for linkage 2
+for i=1:length(time2)
+
+	mat_wdot2_2(:,i) = R1_2* mat_wdot1_1(:,i)+cross(R1_2*mat_w1_1(:,i),th2dot(i)*Z1_1)+th2_2dot(i)*Z1_1; %angular acceleration, linkage 2
+	d(:,i) = cross(mat_w1_1(:,i),p1_2);
+	mat_vdot2_2(:,i) = R1_2*(vdot1_1+cross(mat_wdot1_1(:,i),p1_2)+cross(mat_w1_1(:,i),d(:,i)));  %  linear acceleration, linkage 2
+
+end
+
+%% Center of mass linkage 2
+
+%study robot model and obtain information from SolidWorks
+PC2 = [0.08295 0.00283 0.00977].'; %m center of mass of link 2 (revolute)
+
+
+Vc2_2dot = zeros(3,length(time2)); %matrix for center of mass acceleration
+h = zeros(3,length(time2)); %place holder matrix
+
+for i=1:length(time2)
+
+	h(:,i) = cross(mat_w2_2(:,i),PC2);
+	Vc2_2dot(:,i) = mat_vdot2_2(:,i) + cross(mat_wdot2_2(:,i),PC2)+cross(mat_w2_2(:,i),h(:,i)); center of mass of linkage 2 acceleration
+
+end
+
+%Inertia of Linkage 2
+%obtain by SolidWorks
+I2 = [0.00006594147 0.00002232152 -0.00001234856;
+        0.00002232152 0.0005572996  -0.00000089799;
+       -0.00001234856 -0.00000089799  0.0005929484].'; % kg *m^-2 relative to xz-axis ,yz-axis,and zz-axis
+
+%% Joint Torque 2: revolute 2
+
+Tor_joint2 = length(time2); % create array for the joint torque for linakge 2
+F2_2 = zeros(3,length(time2)); %create matrix for the inertia force of linkage 2
+f2_2 = zeros(3,length(time2)); %create matrix for the total force acting on linkage 2
+N2_2 = zeros(3,length(time2)); %total inertia force on linkage 2
+n2_2 = zeros(3,length(time2)); %inertia torque acting on linkage 1
+
+m2 = 0.21287; %kg total mass of linkage 2
+
+% find the torque of joint 2 relative to inertia, velocity and acceleration generated by DC motor
+for i=1:length(time2)
+
+	F2_2(:,i) = m2 * Vc2_2dot(:,i);
+	f2_2(:,i) = R1_2.'*f1_1(:,i)+ F2_2(:,i);
+	N2_2(:,i) = I2*mat_wdot2_2(:,i)+cross(mat_w2_2(:,i),I2*mat_w2_2(:,i));
+	n2_2(:,i) = N2_2(:,i) + cross(PC2,F2_2(:,i))+cross(p1_2,R1_2.'*f2_2(:,i));
+	Tor_joint2(i) = n2_2(:,i).'*Z1_1; % Nm
+
+end
+
+Tj2 = Tor_joint2.';
+
+%% Joint 3, Prismatic
+% Third joint is prismatic, which transverses relative to the z-axis
+
+% i = 2 % used as an index
+d3 = 0.023; %m (distance travel)
+prismaticdata = xlsread('prismatic_linkage_velocity.xls'); %import data from excel
+time3 = prismaticdata(:,1); %time it required for linkage to move to final position
+L3_vel= prismaticdata(:,2); %velocity linkage traveled
+L3_pos = prismaticdata(:,3); % distance linkage traveled per second
+L3_acc = prismaticdata(:,4); % acceleration of linkage
+
+%d3_dot = 0.15 %m/s, linear speed of travel linkage
+%d3_2dot = 0 %m/
+
+d3_dot = length(time3);
+d3_2dot = length(time3);
+
+
+for i=1:length(time3)
+
+	d3_dot(:,i) = L3_vel(i); %angular velocity (rad/s) on joint 1
+	d3_2dot(:,i) = L3_acc(i); %angular acceleration (rad/s^2) on link 1
+
+end
+
+R2_3 = [1 0 0; 1 0 0; 0 0 1]; %rotation 3x3 matrix of prismatic linkage 3
+P2_3 = [0;  0; d3]; % x,y and z position of linkage 3
+
+% Velocity
+W3_3 = zeros(3,length(time3));
+V3_3 = zeros(3,length(time3));
+
+for i = 1:length(time3)
+
+    W3_3(:,i) = R2_3*mat_w2_2(:,i); %angular velocity of linkage 3
+    V3_3(:,i) = R2_3*(mat_v2_2(:,i) +cross(mat_w2_2(:,i),P2_3))+d3_dot(i)*Z1_1; %linear velocity of linkage 3
+
+end
+
+% Acceleration
+wdot3_3 = zeros(3,length(time3)); % matrix for the linear velocity of linkage 3
+vdot3_3 = zeros(3,length(time3)); % matrix for linear acceleration of linkage 3
+e = zeros(3,length(time3));
+
+for i=1:length(time3)
+
+    wdot3_3(:,i) = R2_3*mat_wdot2_2(:,i);
+    e(:,i) = cross(mat_v2_2(:,i),P2_3);
+    vdot3_3(:,i) = R2_3*(mat_vdot2_2(:,i)+cross(mat_wdot2_2(:,i),P2_3)+cross(mat_w2_2(:,i),e(:,i)))+2*cross(W3_3(:,i),d3_dot(:,i)*Z1_1)+d3_2dot(:,i)*Z1_1;
+
+end
+
+PC3 = [0 0.00288 0.20514].'; %m center of mass of link 3 (prismatic)
+
+%link 3, prismatic
+Vc3_3dot = zeros(3,length(time3));
+k = zeros(3,length(time3));
+
+for i=1:length(time3)
+
+	k(:,i) = cross(W3_3(:,i),PC3);
+	Vc3_3dot(:,i) = vdot3_3(:,i) + cross(wdot3_3(:,i),PC3)+cross(W3_3(:,i),k(:,i)); %center of mass velocity of linkage 3
+
+end
+
+%Inertia of Linkage 3
+% Obtained on SolidWorks
+I3 = [0.00006185203 0.00 0.00000001597;
+      0.00 0.00005606657 0.00000289199;
+       0.00000001597 0.000002892199 0.00000730489].'; % kg *m^-2 relative to xz-axis ,yz-axis,and zz-axis
+
+
+%% Compute Torque on Joint 3: Prismatic
+
+m3 = 0.02433; %kg total mass of linkage 3
+
+F3_3 = zeros(3,length(time3)); % inertia force acting on linkage 3
+f3_3 = zeros(3,length(time3)); % total force acting on linkage 3
+Tor_joint3 = length(time3); %final torque acting on joint 3
+
+for i=1:length(time3)
+
+    F3_3(:,i) = m3 * Vc3_3dot(:,i);
+    f3_3(:,i) = R2_3.'*f2_2(:,i)+  F3_3(:,i);
+    Tor_joint3(:,i) =  f3_3(:,i).'*Z1_1; % Nm
+
+end
+Tj3 = Tor_joint3.';
+
+%% Joint 4
+% Revolute joint 4, rotating relative to z-axis
+
+motor2data = xlsread('Joint4_motor3.xls'); %import data from excel
+
+%organize data base on respective column
+time4 = motor2data(:,1); %time of joint to rotate to final angular position set equal to 'time4'
+AngPos4 = motor2data(:,2); %angular position joint 4 traveled
+AngVel4 = motor2data(:,4); %angular velocity of joint 4
+AngAcc4 = motor2data(:,5); %angular acceleration of joint 4
+
+% Joint 4 Velocity Propragation
+th4dot = length(time4); %dc motor angular speed
+th4_2dot = length(time4); %dc motor angular acceleration
+mat_w4_4 = zeros(3,length(time4)); %create matrix for angular acceleration for linkage 4
+mat_v4_4 = zeros(3,length(time4)); %create matrix for linear acceleration for linkage 4
+angle_th4 = 100;  %final angular position joint 4 traveled.
+
+for i=1:length(time4)
+
+	th4dot(i) = AngVel4(i); %angular velocity (rad/s) of joint 4
+	th4_2dot(i) = AngAcc4(i); %angular acceleration (rad/s^2) of joint 4
+
+end
+
+%rotation and point of joint 4
+% 3x3 matrix rotation of joint 4
+R3_4 = [cosd(angle_th4) -sind(angle_th4) 0;
+          sind(angle_th4) cosd(angle_th4) 0;
+          0 0 1];
+
+% x,y and z point of joint 4
+P3_4 = [0; 0; 0.02];
+
+% use for loop to compute and store data for angular and linear velocity of linkage 4
+for i=1:length(time4)
+
+    w4_4(:,i) = R3_4*W3_3(:,i)+th4dot(i)*Z1_1; %angular speed of joint 4
+    v4_4(:,i) = R1_2*(V3_3(:,i) + cross(W3_3(:,i),P3_4));  %linear speed of joint 4
+
+end
+
+% acceleration of linkage 4
+wdot4_4 = zeros(3,length(time4));  % matrix angular acceleration of linkage 4
+f = zeros(3,length(time4));
+vdot4_4 = zeros(3,length(time4));  %matrix linear acceleration of linkage 4
+
+% use for loop to compute the angualr and linear acceleration of linkage 4
+for i =1:length(time4)
+
+	wdot4_4(:,i) = R3_4 *wdot3_3(:,i)+cross(R3_4 *W3_3(:,i),th4dot(i)*Z1_1)+th4_2dot(i)*Z1_1;
+	f(:,i) = cross(W3_3(:,i),P3_4);
+	vdot4_4(:,i) = R3_4 *(vdot3_3(:,i)+cross(wdot3_3(:,i),P3_4)+cross(W3_3(:,i),f(:,i)));
+
+end
+
+PC4 = [-0.0056 0.00515 0.04886].' %m center of mass of link 4 (revolute)
+Vc4_4dot = zeros(3,length(time4)); %center of mass velocity of linakge 4
+q = zeros(3,length(time4)); %place holder matrix
+
+%compute center of velocity of linkage 4
+
+for i=1:length(time4)
+
+    q(:,i) = cross(w4_4(:,i),PC4);
+    Vc4_4dot(:,i) = vdot4_4(:,i) + cross(wdot4_4(:,i),PC4)+cross(w4_4(:,i),q(:,i));
+
+end
+
+%% Inertia Force/Torque
+
+%Inertia of Linkage 4
+%3x3 matrix of inertia of linkage 4
+% obtain from SolidWorks
+
+  I4 = [0.00002750718 -0.00000153128 0.00000042179;
+      -0.0000015312 0.00003554755 -0.00000191498;
+      0.00000042179 -0.00000191498 0.00001117297];
+
+
+% Joint 4 force and torque variables
+m4 = 0.02733; %kg  total mass of linkage 4
+F4_4 = zeros(3,length(time4)); %inertia force acting on linkage 4
+f4_4 = zeros(3,length(time4));  %total force acting on linkage 4
+N4_4 = zeros(3,length(time4)); % inertia torque acting on linkage 4
+n4_4 = zeros(3,length(time4)); %total inertia torque acting on linkage 4
+Tor_joint4 = length(time4); %total torque acting on joint 4
+
+for i=1:length(time4)
+
+	F4_4(:,i) = m4*Vc4_4dot(:,i);
+	f4_4(:,i) = R3_4.'*f3_3(:,i)+ F4_4(:,i);
+	N4_4(:,i) = I4*wdot4_4(:,i)+cross(w4_4(:,i),I4*w4_4(:,i));
+	n4_4(:,i) = N4_4(:,i) + cross(PC4,F4_4(:,i))+cross(P3_4,R3_4.'*f4_4(:,i));
+	Tor_joint4(i) = n4_4(:,i).'*Z1_1; % Nm
+
+end
+Tj4 = Tor_joint4.'*-1;

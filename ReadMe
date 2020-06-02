@@ -1,0 +1,82 @@
+
+Skip to content
+Pull requests
+Issues
+Marketplace
+Explore
+@Cuenca-Andres
+Learn Git and GitHub without any code!
+
+Using the Hello World guide, you’ll start a branch, write comments, and open a pull request.
+Cuenca-Andres /
+RoboticsProject
+
+1
+0
+
+    0
+
+Code
+Issues 1
+Pull requests 0
+Actions
+Projects 0
+Wiki
+Security 0
+Insights
+
+    Settings
+
+RoboticsProject/README.md
+@Cuenca-Andres Cuenca-Andres Create README.md e0d455a 15 hours ago
+43 lines (31 sloc) 1.65 KB
+RoboticsProject
+
+Hello, Andres Cuenca reporting in!
+
+Thank you for taking the time to read this document. This github project covers on how to learn to read, document, and analyze a control system of a robot. For this particular example, I applied a SCARA (Selective compliance assembly robotic arm) robot. This SCARA robot model is a RRPR robot, known as revolute, revolute, prismatic, revolute which motion relative to z-axis.
+
+For the control system of the robot, the project is broken down by milestone:
+
+    Set up the forward kinematics of the robot.
+    Set up the inverse kinematics of the robot.
+    Generate the inverse dynamics of the robot.
+    Derive the electro-mechanical equations to create the plant system of the robot.
+    Use MATLAB to analyze PID and plant control system.
+    Create an Arduino code to read the direction and speed of a DC Motor.
+    Create a PID Arduino code to control the position of the DC motor shaft.
+    Generate a simulation program to monitor the torque of DC motor relative to angular speed and position.
+    Make conclusion of the control system of the robot.
+
+Requirements for project
+
+    MATLAB (python can work)
+    Arduino Microcontroller
+    DC Motor integrated with a quadrature encoder
+    Arduino IDE
+    Excel- used for storing data
+    SolidWorks - used for capturing inertia, mass and center of mass of the robotic model
+
+Required Background
+
+    Intermediate programming
+    Linear Alegbra
+    Strong knowledge in dynamic and kinematics physics
+    Basic background in electronics and hardware
+    Some exposure to CAD modeling design
+
+Last and most importantly, eager to learn and have fun!!
+
+    © 2020 GitHub, Inc.
+    Terms
+    Privacy
+    Security
+    Status
+    Help
+
+    Contact GitHub
+    Pricing
+    API
+    Training
+    Blog
+    About
