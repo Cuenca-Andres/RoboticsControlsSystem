@@ -4,7 +4,7 @@ Hello, Andres Cuenca reporting in!
 
 Thank you for taking the time to read this document. This github project covers on how to learn to read, document, and analyze a control system of a robot. For this particular example, I applied a SCARA (Selective compliance assembly robotic arm) robot. This SCARA robot model is a RRPR robot, known as revolute, revolute, prismatic, revolute which motion relative to z-axis.
 
-# For the control system of the robot, the project is broken down by milestone:
+ For the control system of the robot, the project is broken down by milestone:
 
     Set up the forward kinematics of the robot.
     Set up the inverse kinematics of the robot.
@@ -16,7 +16,7 @@ Thank you for taking the time to read this document. This github project covers 
     Generate a simulation program to monitor the torque of DC motor relative to angular speed and position.
     Make conclusion of the control system of the robot.
 
-# Requirements for project
+ Requirements for project
 
     MATLAB (python can work)
     Arduino Microcontroller
@@ -25,7 +25,7 @@ Thank you for taking the time to read this document. This github project covers 
     Excel- used for storing data
     SolidWorks - used for capturing inertia, mass and center of mass of the robotic model
 
-# Required Background
+ Required Background
 
     Intermediate programming
     Linear Alegbra
