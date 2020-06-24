@@ -1,0 +1,91 @@
+% Written by: Andres Cuenca
+% Date: 04/01/2020
+% Objective: To create a PID control simulation program to analyze step
+% response graphs that respond to different cases of proportional, integral and derivative
+% coefficients and a plant system. 
+% This simulation program is derived for a SCARA robot. 
+
+% Design Criteria: Zero steady-state error, low rising time, low settling
+% time, and low overshoot for the shaft of DC motor to reach a smooth and
+% desirable angular position. 
+% 
+
+%% Transfer Function, for Joint 1  
+s = tf('s'); 
+
+% Plant System of the DC motor linked to a timing belt, two gears, and the
+% load of two robotic linkages. 
+
+%Parameters 
+Jt = 0.069150227; % (kg.m2) total moment of inertia acted on motor , relative to Z-axis (analyzed on SolidWorks)
+K = 0.8394; % (N*m) required Motor Torque for Joint 1 (measured using the inverse-dynamics algorithm)
+L = 2.75E-6; % Inductance, keep this constant (given)
+R = 6.8; %Ohms (measured with a multimeter)
+b = 0.0893; % (N.m.s)Tf: motor viscous friction constant (measured: change base on current vs. velocity)  
+N1 = 24; % small gear, mounted to motor shaft
+N2 = 34; %big gear, mounted to load shaft
+
+T_M1 = (K*(N1/N2))/(L*Jt*s^3+(R*Jt+b*L)*s^2+(K+R*b)*s) %transfer function 
+
+
+%% Proportional Control 
+ 
+kp = 1;
+
+for i = 1:3
+    CP(:,:,i) = pid(kp);
+    kp = kp+.04;
+end 
+sys_cl_PC = feedback(CP*T_M1,1); 
+
+
+t = 0:0.01:80;
+figure;
+step(sys_cl_PC(:,:,1), sys_cl_PC(:,:,2), sys_cl_PC(:,:,3), t)
+ylabel('Position, \theta (radians)')
+legend('Kp = 1',  'Kp = 1.02',  'Kp = 1.04', 'Location','southeast') 
+
+%% Include a Step Disturbance with Different values of Kp
+figure;
+dist_cl = feedback(T_M1,CP);
+step(dist_cl(:,:,1), dist_cl(:,:,2), dist_cl(:,:,3), t)
+ylabel('Position, \theta (radians)')
+title('Response to a Step Disturbance with Different Values of K_p')
+legend('Kp = 1',  'Kp = 1.04',  'Kp = 1.08', 'Location','southeast')  
+stepinfo(dist_cl(:,:,1));
+
+
+%% Porportional Integral Control 
+% 
+Kp1 = 1; %choose Kp as 1, which was chosen from step disturbance
+Ki = .001; %start with a small value
+for i = 1:5
+    CI(:,:,i) = pid(Kp1,Ki);
+    Ki = Ki + .1; %increment by .1 
+end
+
+sys_cl_PI = feedback(CI*T_M1,1);
+figure; 
+step(sys_cl_PI(:,:,1), sys_cl_PI(:,:,2), sys_cl_PI(:,:,3), t)
+ylabel('Position, \theta (radians)')
+title('Response to a Step Reference with Kp = 1 and Different Values of K_i')
+legend('Ki = .001', 'Ki = .2001', 'Ki = .3001', 'Location','southeast')  
+
+
+
+%% Porportional Integral Derivative Control 
+ki = .001; %chosen from PI, disturbance chart 
+Kd = .00001;
+
+for i = 1:3
+    CD(:,:,i) = pid(Kp1,ki,Kd);
+    Kd = Kd + 1;
+end
+
+sys_clPID = feedback(CD*T_M1,1);
+figure; 
+step(sys_clPID(:,:,1), sys_clPID(:,:,2), sys_clPID(:,:,3), t)
+ylabel('Position, \theta (radians)')
+title('Step Response with K_p = 1, K_i = .001 and Different Values of K_d')
+legend('Kd = 0.00001', 'Kd = 1.00001', 'Kd = 2.00001', 'Location','southeast')   
+
