@@ -1,0 +1,23 @@
+%% Inverse Kinematics for RRPR Robot 
+
+%Written by: Andres Cuenca
+%Date: 07/09/2020
+%Script is performed on MATLAB
+   
+ px = 0.106 % desire point of the end-effector, meters
+ py = 0.23 % desire point of the end-effector , meters
+ pz = -.16 % desire point of end-effector, meters
+ gamma = 10 %angle for full rotation of the end-effector (assume its known by user)
+
+% Find angles theta2, theta1 and theta4 in degrees 
+th2 = acosd((px^2 + py^2 - a1^2 - a2^2)/(2*a1*a2))%angle for revolute 2
+r = sqrt(px^2+py^2)
+Beta= acosd((px^2 + py^2 + a1^2 - a2^2)/(2*a1*r))
+th1 = atan2(py,px)*180/pi-Beta %angle for revolute 1
+
+ r11 = cosd(th1+th2)*cosd(th4)+sind(th1+th2)*sind(th4) %orientation of end-effector 
+ r12 = -1*cosd(th1+th2)*sind(th4)-1*cosd(th1+th2)*sind(th4)+sind(th1+th2)*cosd(th4) %orientation of end-effector 
+ angle_th4 = -th1 - th2 +(atan2(r11,r12)*180/pi) %angle for end-effector relative to the end-point px and py
+  d3 = pz + d4
+  
+  
