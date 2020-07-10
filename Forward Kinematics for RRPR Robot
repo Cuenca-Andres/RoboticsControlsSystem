@@ -7,75 +7,91 @@
 & dynamics of the robot, which can determine the torque joint relative to angular position and velocity. 
 % The Forward Kinematics is derived from a Darven-Hartenburg table, which an image is found on the 
 % RoboticsControlsSystem github page.
+%About: User-Input Interactive Application to verify results with inverse kinematics
 
-
-syms theta1 theta2  theta4 d3 % variables
-
-
-d1 = 0.036; %m, link offset, thickness of linkage 1 
-d2 = 0.03; %m, link offset, thickness of linkage 2
-d4 = 0.02; %m, link offset, thickness of linkage 3
-
-a1 = 0.150; %m, link length1
-a2 = 0.125; %m, link length2 
-a3 = 0; %m, link length3
-a4 = 0; %m, link length4 
-
-
-theta3 = 0; %deg
-
-alpha1 = 0; %deg
-alpha2 = 180; %deg
-alpha3 = 0; %deg
-alpha4 = 0; %deg
-
+%% Forward Kinematics for RRPR Robot
 d1 = 0; %m, link offset 
 d2 = 0; %m, link offset
+d3 = -.13;
 d4 = 0.02; %m, link offset
+
+LinkOffsetArray = [d1 d2 d3 d4];
 
 a1 = 0.150; %m, link length1
 a2 = 0.125; %m, link length2 
 a3 = 0; %m, link length3
 a4 = 0; %m, link length4 
 
+LinkLengthArray = [a1 a2 a3 a4];
 % syms theta1 theta2 theta4 
-theta1 = 45
-theta2 = 45
-theta4 = 10
+% theta1 = 45
+% theta2 = 45
+theta3 = 0;
+% theta4 = 10
+
+inputAngRot = inputdlg('Enter joint angles r1, r2, r4 values of \theta (in degrees):',...
+             'Input Rotation Angles', [1 80])
+
+AnglArray = str2num(inputAngRot{1});
+
 alpha1 = 0; %deg
 alpha2 = 180; %deg
 alpha3 = 0; %deg
 alpha4 = 0; %deg
 
+DegreePara = [alpha1 alpha2 alpha3 theta3 alpha4];
 
-% Rotation Joint 1 
-T0_1 = [cos(theta1) -sin(theta1) 0 a1*cos(theta1);
-        sin(theta1)*cosd(alpha1) cos(theta1)*cosd(alpha1) -sind(alpha1) sin(theta1)*a1;
-        sin(theta1)*sind(alpha1) cos(theta1)*sind(alpha1) cosd(alpha1) cosd(alpha1)*d1;
+frwdKine(AnglArray,DegreePara, LinkOffsetArray, LinkLengthArray)
+
+function [] = frwdKine(AnglArray, DegreeParam, LinkOffsetArray, LinkLengthArray)
+
+theta1 = AnglArray(1);
+theta2 = AnglArray(2);
+theta4 = AnglArray(3);
+
+alpha1 = DegreeParam(1);
+alpha2 = DegreeParam(2);
+alpha3 = DegreeParam(3);
+theta3 = DegreeParam(4); 
+alpha4 = DegreeParam(5); 
+
+d1 = LinkOffsetArray(1);
+d2 = LinkOffsetArray(2);
+d3 = LinkOffsetArray(3);
+d4 = LinkOffsetArray(4);
+
+a1 = LinkLengthArray(1);
+a2 = LinkLengthArray(2);
+a3 = LinkLengthArray(3);
+a4 = LinkLengthArray(4);
+
+% Rotating Linkage 1
+T0_1 = [cosd(theta1) -sind(theta1) 0 a1*cos(theta1);
+        sind(theta1)*cosd(alpha1) cosd(theta1)*cosd(alpha1) -sind(alpha1) sind(theta1)*a1;
+        sind(theta1)*sind(alpha1) cosd(theta1)*sind(alpha1) cosd(alpha1) cosd(alpha1)*d1;
         0 0 0 1] 
 
-% Rotation Joint 2 
-T1_2 = [cos(theta2) sin(theta2) 0 a2*cos(theta2);
-        -sin(theta2)*cosd(alpha2) cos(theta2)*cosd(alpha2) -sind(alpha2) sin(theta2)*a2;
-        sin(theta2)*sind(alpha2) cos(theta2)*sind(alpha2) cosd(alpha2) cosd(alpha2)*d2;
+%Rotating Linkage 2
+T1_2 = [cosd(theta2) sind(theta2) 0 a2*cosd(theta2);
+        -sind(theta2)*cosd(alpha2) cosd(theta2)*cosd(alpha2) -sind(alpha2) sind(theta2)*a2;
+        sind(theta2)*sind(alpha2) cosd(theta2)*sind(alpha2) cosd(alpha2) cosd(alpha2)*d2;
         0 0 0 1]         
 
- % Translation Joint 3
- T2_3 =  [cos(theta3) -sin(theta3) 0 a3;
-        sin(theta3)*cos(alpha3) cos(theta3)*cos(alpha3) -sin(alpha3) -sin(alpha3)*d3;
-        sin(theta3)*sin(alpha3) cos(theta3)*sin(alpha3) cos(alpha3) cos(alpha3)*d3;
+%Translation Linkage 3
+ T2_3 =  [cosd(theta3) -sind(theta3) 0 a3;
+        sind(theta3)*cosd(alpha3) cosd(theta3)*cosd(alpha3) -sind(alpha3) -sind(alpha3)*d3;
+        sind(theta3)*sind(alpha3) cosd(theta3)*sind(alpha3) cosd(alpha3) cosd(alpha3)*d3;
         0 0 0 1]  
-
-% Rotation Joint 4
- T3_4 =  [cos(theta4) -sin(theta4) 0 a4;
-        sin(theta4)*cos(alpha4) cos(theta4)*cos(alpha4) -sin(alpha4) -sin(alpha4)*d4;
-        sin(theta4)*sin(alpha4) cos(theta4)*sin(alpha4) cos(alpha4) cos(alpha4)*d4;
-        0 0 0 1]   
-   
-       
- % Transformation Matrix of End-Effector
-  T0_4 = [cos(theta1+theta2)*cos(theta4)+sin(theta1+theta2)*sin(theta4) -1*cos(theta1+theta2)*sin(theta4)-1*cos(theta1+theta2)*sin(theta4)+sin(theta1+theta2)*cos(theta4) 0 a1*cos(theta1)+a2*cos(theta1+theta2);
-          sin(theta1+theta2)*cos(theta4)-cos(theta1+theta2)*sin(theta4) -1*sin(theta1+theta2)*sin(theta4)-cos(theta1+theta2)*cos(theta4) 0 a1*sin(theta1)+a2*sin(theta1+theta2);
-          0 0 -1 -d3-d4;
-          0 0 0 1] 
  
+ % Rotating Linkage 4   
+ T3_4 =  [cosd(theta4) -sind(theta4) 0 a4*cosd(theta4);
+        sind(theta4)*cosd(alpha4) cosd(theta4)*cosd(alpha4) -sind(alpha4) -sind(alpha4)*d4;
+        sind(theta4)*sind(alpha4) cosd(theta4)*sind(alpha4) cosd(alpha4) cosd(alpha4)*d4;
+        0 0 0 1] 
+
+ % Translation Matrix for End-Effector SCARA Robot 
+    T0_4 = [cosd(theta1+theta2)*cosd(theta4)+sind(theta1+theta2)*sind(theta4) -1*cosd(theta1+theta2)*sind(theta4)-1*cosd(theta1+theta2)*sind(theta4)+sind(theta1+theta2)*cosd(theta4) 0 a1*cosd(theta1)+a2*cosd(theta1+theta2);
+          sind(theta1+theta2)*cosd(theta4)-cosd(theta1+theta2)*sind(theta4) -1*sind(theta1+theta2)*sind(theta4)-cosd(theta1+theta2)*cosd(theta4) 0 a1*sind(theta1)+a2*sind(theta1+theta2);
+           0 0 -1 -d3-d4;
+           0 0 0 1]    
+end 
