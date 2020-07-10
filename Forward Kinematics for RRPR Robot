@@ -29,35 +29,53 @@ alpha2 = 180; %deg
 alpha3 = 0; %deg
 alpha4 = 0; %deg
 
+d1 = 0; %m, link offset 
+d2 = 0; %m, link offset
+d4 = 0.02; %m, link offset
 
+a1 = 0.150; %m, link length1
+a2 = 0.125; %m, link length2 
+a3 = 0; %m, link length3
+a4 = 0; %m, link length4 
+
+% syms theta1 theta2 theta4 
+theta1 = 45
+theta2 = 45
+theta4 = 10
+alpha1 = 0; %deg
+alpha2 = 180; %deg
+alpha3 = 0; %deg
+alpha4 = 0; %deg
+
+
+% Rotation Joint 1 
 T0_1 = [cos(theta1) -sin(theta1) 0 a1*cos(theta1);
-        sin(theta1)*cos(alpha1) cos(theta1)*cos(alpha1) -sin(alpha1) -sin(theta1)*a1;
-        sin(theta1)*sin(alpha1) cos(theta1)*sin(alpha1) cos(alpha1) 0;
+        sin(theta1)*cosd(alpha1) cos(theta1)*cosd(alpha1) -sind(alpha1) sin(theta1)*a1;
+        sin(theta1)*sind(alpha1) cos(theta1)*sind(alpha1) cosd(alpha1) cosd(alpha1)*d1;
         0 0 0 1] 
+
+% Rotation Joint 2 
 T1_2 = [cos(theta2) sin(theta2) 0 a2*cos(theta2);
-        sin(theta2)*cosd(alpha2) cos(theta2)*cosd(alpha2) -sind(alpha2) a2*sin(theta2);
+        -sin(theta2)*cosd(alpha2) cos(theta2)*cosd(alpha2) -sind(alpha2) sin(theta2)*a2;
         sin(theta2)*sind(alpha2) cos(theta2)*sind(alpha2) cosd(alpha2) cosd(alpha2)*d2;
         0 0 0 1]         
 
- 
+ % Translation Joint 3
  T2_3 =  [cos(theta3) -sin(theta3) 0 a3;
         sin(theta3)*cos(alpha3) cos(theta3)*cos(alpha3) -sin(alpha3) -sin(alpha3)*d3;
         sin(theta3)*sin(alpha3) cos(theta3)*sin(alpha3) cos(alpha3) cos(alpha3)*d3;
         0 0 0 1]  
- 
+
+% Rotation Joint 4
  T3_4 =  [cos(theta4) -sin(theta4) 0 a4;
         sin(theta4)*cos(alpha4) cos(theta4)*cos(alpha4) -sin(alpha4) -sin(alpha4)*d4;
         sin(theta4)*sin(alpha4) cos(theta4)*sin(alpha4) cos(alpha4) cos(alpha4)*d4;
-        0 0 0 1] 
-        
-  % Forward Kinematics Transformation Matrix 
-  
-  T0_4 = T0_1*T1_2*T2_3*T3_4 %multiplying matrices to  
-
-
-Px = (3*cos(theta1))/20 + (cos(theta1)*cos(theta2))/8 - (sin(theta1)*sin(theta2))/8 %position x of end-effector
-Py = (cos(theta1)*sin(theta2))/8 - (3*sin(theta1))/20 + (cos(theta2)*sin(theta1))/8 % position y of end-effector
-Pz =  -d3 - 1/20;% position z of the end-effector
-
-
-P = [Px Py Pz].' % 3x1 matrix of the position of the end-effector 
+        0 0 0 1]   
+   
+       
+ % Transformation Matrix of End-Effector
+  T0_4 = [cos(theta1+theta2)*cos(theta4)+sin(theta1+theta2)*sin(theta4) -1*cos(theta1+theta2)*sin(theta4)-1*cos(theta1+theta2)*sin(theta4)+sin(theta1+theta2)*cos(theta4) 0 a1*cos(theta1)+a2*cos(theta1+theta2);
+          sin(theta1+theta2)*cos(theta4)-cos(theta1+theta2)*sin(theta4) -1*sin(theta1+theta2)*sin(theta4)-cos(theta1+theta2)*cos(theta4) 0 a1*sin(theta1)+a2*sin(theta1+theta2);
+          0 0 -1 -d3-d4;
+          0 0 0 1] 
+ 
