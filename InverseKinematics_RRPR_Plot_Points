@@ -1,0 +1,94 @@
+% Written by: Andres Cuenca
+% Date: 07/10/2020
+% Objective: This MATLAB script defines and maps possible px and py
+% points of SCARA RRPR robot that can be executed for the user to pick and place objects. 
+% This script also defines the max and minimum py and pz points for the
+% robot.
+
+%% Parameters
+
+a1 = 0.150; %m, link length1
+a2 = 0.125; %m, link length2 
+
+theta1 = [-90:1:90]; %degrees
+theta2 = [-90:1:90]; %degrees 
+XlimitTH1 = length(theta2)-1; 
+XlimitTH2 = length(theta2)-1; 
+YlimitTH1 = length(theta2)-1; 
+YlimitTH2 = length(theta2)-1; 
+px = length(theta2)-1;
+py = length(theta2)-1;
+
+%% Define Px and Py Points
+for i = 1:(length(theta2)-1)
+   px(i) = a1*cosd(theta1(i))+a2*cosd(theta1(i)+theta2(i)); %inverse kinematics to find px
+   py(i) = a1*sind(theta1(i))+a2*sind(theta1(i)+theta2(i)); %inverse kinematics to find py
+   
+   if px(i) == 0
+       disp('px = 0')
+       XlimitTH1(i) = theta1(i);
+       XlimitTH2(i) = theta2(i);
+       %thetaMat[i][i] = (limitTH1(i),limitTH2(i)); 
+   end 
+   
+   if py(i) == 0
+       disp('py = 0')
+       YlimitTH1(i) = theta1(i);
+       YlimitTH2(i) = theta2(i); 
+   end  
+   
+   hold on;
+   plot(px(i),py(i),'b--o')
+%    plot(py(i),'c*')
+   
+end 
+
+MinPy = min(py)
+MaxPy = max(py)
+
+MinPx = min(px)
+MaxPx = max(px)
+
+disp('Minimum Py value is: ')
+disp(MinPy)
+
+disp('Minimum Px value is: ')
+disp(MinPx)
+
+disp('Maximum Py value is: ')
+disp(MaxPy)
+
+disp('Maximum Px value is: ')
+disp(MaxPx)
+
+
+%% Create Nested-For loop to plot more points of Px and Py
+for i = 1:(length(theta2)-1)
+%    px(i) = a1*cosd(theta1(i))+a2*cosd(theta1(i)+theta2(i)); %inverse kinematics to find px
+%    py(i) = a1*sind(theta1(i))+a2*sind(theta1(i)+theta2(i)); %inverse kinematics to find py
+   
+   for j =1:(length(theta1)-1)
+       px(j) = a1*cosd(theta1(j))+a2*cosd(theta1(j)+theta2(i)); %inverse kinematics to find px 
+       py(j) = a1*sind(theta1(j))+a2*sind(theta1(j)+theta2(i)); %inverse kinematics to find py
+       hold on;
+       plot(px(j),py(j),'c*')
+   end 
+    
+%    if px(i) == 0
+%        disp('px = 0')
+%        XlimitTH1(i) = theta1(i);
+%        XlimitTH2(i) = theta2(i);
+%        %thetaMat[i][i] = (limitTH1(i),limitTH2(i)); 
+%    end 
+%    
+%    if py(i) == 0
+%        disp('py = 0')
+%        YlimitTH1(i) = theta1(i);
+%        YlimitTH2(i) = theta2(i); 
+%    end  
+%    
+%    hold on;
+%    plot(px(i),py(i),'b--o')
+% %    plot(py(i),'c*')
+   
+end 
