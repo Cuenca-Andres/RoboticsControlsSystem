@@ -1,0 +1,206 @@
+% Written by: Andres Cuenca
+% Date: 07/10/2020
+% Objective: This MATLAB script defines and maps possible px and py
+% points of SCARA RRPR robot that can be executed for the user to pick and place objects. 
+% This script also defines the max and minimum py and pz points for the
+% robot.
+% Once limit values of theta1, theta2, px and py are define
+% this script will automatically generate a motion path
+
+%% Parameters
+
+a1 = 0.150; %m, link length1
+a2 = 0.125; %m, link length2 
+
+theta1 = [-90:1:90]; % assumption degree value
+theta2 = [-90:1:90]; % assumption degree value 
+XlimitTH1 = length(theta2)-1; % array for limit of theta1 (degrees)
+XlimitTH2 = length(theta2)-1; % array for limit of theta2 (degrees)
+YlimitTH1 = length(theta2)-1; 
+YlimitTH2 = length(theta2)-1; 
+px = length(theta2)-1; %array for possible px values
+py = length(theta2)-1; %array for possible py values
+
+%% Define Px and Py Points
+
+% plots possible px and py points of SCARA robot
+% use nested for loop to plot py and px points
+figure;
+hold on;
+title('Possible X and Y Points Plotted by SCARA Robot')
+xlabel('Px (meters)') 
+ylabel('Py (meters)') 
+
+
+for i = 1:(length(theta2)-1)
+    for j = 1:(length(theta2)-1)
+     px(j) = a1*cosd(theta1(j))+a2*cosd(theta1(j)+theta2(i)); %inverse kinematics to find px
+     py(j) = a1*sind(theta1(j))+a2*sind(theta1(j)+theta2(i)); %inverse kinematics to find py
+   
+   if px(j) == 0 && py(j) ==0
+       disp('px = 0')
+       XlimitTH1(j) = theta1(j);
+       XlimitTH2(j) = theta2(j);
+   end 
+    
+   hold on;
+   plot(px(j),py(j),'c*')
+    end 
+   
+end 
+
+
+%% Create Nested-For loop to plot more points of Px and Py
+r = length(theta2)-1
+limPx = length(theta2)
+limPy = length(theta2)
+limPx2 = length(theta2)
+limPy2 = length(theta2)
+%Test Case for Theta2
+for i = 1:(length(theta2)-1)  
+   for j =1:(length(theta1)-1)
+       px(j) = a1*cosd(theta1(j))+a2*cosd(theta1(j)+theta2(i)); %inverse kinematics to find px for every possible angle
+       py(j) = a1*sind(theta1(j))+a2*sind(theta1(j)+theta2(i)); %inverse kinematics to find py for every possible angle
+       r(j) = sqrt(px(j)^2+py(j)^2); %calculate r 
+    if r(j) ~= 0
+       limPx(j) = px(j);
+       limPy(j) = py(j);
+    end
+   end   
+end 
+
+%Test Case for Theta1
+for i = 1:(length(theta1)-1)  
+   for j =1:(length(theta2)-1)
+       px(j) = a1*cosd(theta1(i))+a2*cosd(theta1(i)+theta2(j)); %inverse kinematics to find px for every possible angle
+       py(j) = a1*sind(theta1(i))+a2*sind(theta1(i)+theta2(j)); %inverse kinematics to find py for every possible angle
+       r(j) = sqrt(px(j)^2+py(j)^2); %calculate r 
+    if r(j) ~= 0
+       limPx2(j) = px(j);
+       limPy2(j) = py(j);
+    end
+   end   
+end 
+
+
+
+%% Define Px and Py max and min. values
+
+MaxPx = max(limPx);
+MaxPy = max(limPy);
+minPx = min(limPx);
+minPy = min(limPy);
+
+MaxPx2 = max(limPx2);
+MaxPy2 = max(limPy2);
+
+minPx2 = min(limPx2);
+minPy2 = min(limPy2);
+
+% test condition to find accurate max and min results for Px and Py
+if MaxPx < MaxPx2
+    maxPx = MaxPx2
+else
+    maxPx = MaxPx
+end 
+
+if minPy < minPy2
+    minPy = minPy
+else
+    minPy = minPy2
+end
+
+    
+%% Define Rotational Angles of Theta 1 and Theta 2
+% theta1 and theta2 are in respect of rotational linkages one and two.
+
+PY = [minPy:0.01:MaxPy];
+PX = [minPx:0.01:MaxPx];
+
+th2 = length(PY); 
+th1 = length(PY); 
+NonComplexAngle2 = length(PY);
+NonComplexAngle1 = length(PX);
+r = length(PY); 
+Beta = length(PY); 
+
+for i=1:length(PX)
+r(i) = sqrt(PX(i)^2+PY(i)^2);
+    if r(i) ~= 0  
+        for j=1:length(PY)
+            th2(j) = acosd((PX(i)^2 + PY(j)^2 - a1^2 - a2^2)/(2*a1*a2)); % angle for revolute 2
+            if imag(th2(j))~= 0        
+            else 
+                NonComplexAngle2(j) = th2(j);
+                Beta(j) = acosd((PY(j)^2 + PX(i)^2 + a1^2 - a2^2)/(2*a1*r(i)));
+                th1(j) = atan2(PY(i),PX(i))*180/pi-Beta(j); % angle for revolute 1
+                   if imag(th1(j))~= 0  
+                   else
+                      NonComplexAngle1(j) = th1(j); 
+                   end
+            end 
+        end
+    end 
+end 
+
+Th1Max = max(NonComplexAngle1)
+Th2Max = max(NonComplexAngle2)
+
+Th1Min = min(NonComplexAngle1)
+Th2Min = min(NonComplexAngle2) 
+
+%% Plot Px and Py base on various different theta1 and theta2 (degree) values
+%collect define px and py values (meters)
+% and plot to generate different motion path test for the SCARA robot
+
+Angle1 = [Th1Min:0.1:Th1Max];
+Angle2 = [Th2Min:0.1:Th2Max];
+
+pX = length(Angle1);
+pY = length(Angle1);
+
+pX2 = length(Angle1);
+pY2 = length(Angle1);
+
+pX3 = length(Angle1);
+pY3 = length(Angle1);
+
+for i = 1:(length(Angle2))
+   for j =1:(length(Angle1))
+       pX(j) = a1*cosd(Angle1(j))+a2*cosd(Angle1(j)+Angle2(i)); %inverse kinematics to find px 
+       pY(j) = a1*sind(Angle1(j))+a2*sind(Angle1(j)+Angle2(i)); %inverse kinematics to find py
+  
+   end     
+end 
+
+for i = 1:(length(Angle1))
+   for j =1:(length(Angle2))
+       pX2(j) = a1*cosd(Angle1(i))+a2*cosd(Angle1(i)+Angle2(j)); %inverse kinematics to find px 
+       pY2(j) = a1*sind(Angle1(i))+a2*sind(Angle1(i)+Angle2(j)); %inverse kinematics to find py
+      
+   end     
+end 
+
+for i = 1:(length(Angle2))
+       pX3(i) = a1*cosd(Angle1(i))+a2*cosd(Angle1(i)+Angle2(i)); %inverse kinematics to find px 
+       pY3(i) = a1*sind(Angle1(i))+a2*sind(Angle1(i)+Angle2(i)); %inverse kinematics to find py  
+end
+
+
+
+%% Plot Different Motion Paths of SCARA Robot 
+figure;
+hold on;
+title('Motion Path Test')
+xlabel('Px (meters)') 
+ylabel('Py (meters)') 
+
+
+    plot(pX,pY,'c*')
+    plot(pX2,pY2,'r*')
+    plot(pX3,pY3,'y*')
+    plot(pX2,pY3,'g*')
+    plot(pX3,pY2,'m*')
+    
+
+legend('Motion Path 1','Motion Path 2', 'Motion Path 3', 'Motion Path 4', 'Motion Path 5', 'Location', 'southeastoutside')
