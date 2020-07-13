@@ -1,0 +1,108 @@
+%Written by: Andres Cuenca
+%Date: 07/13/2020
+% Objective: MATLAB Script that executes a motion path simulation for a
+% SCARA robot (RRPR). This script will import an exisitng urdf file that I
+% generated from SolidWorks. This robot model was dimension and defined on
+% SolidWorks. The script then creates a motion path that consist points px,
+% and py relative to angles one and two. which is derived form inverse
+% kinematics. Then the program computes the joint angles of the robot,
+% using MATLABs robotic toolbox inverse kinematics function. Finally, a
+% simulation is executed to allow the user to verify or refine the desire
+% motion path for the robot. 
+
+%% Construct SCARA Robot
+robot = importrobot('SCARA_robot_3.urdf'); %import an existing urdf file
+show(robot) %show details of SCARA robot
+
+showdetails(robot)
+a1 = .190; %arm length 1 (meters)
+a2 = .120; %arm length 2 (meters)
+
+%% Set Up Parameters
+
+t = (0:0.1:30); %time of 30 seconds 
+q0 = homeConfiguration(robot); %set robot to home 
+ndof = length(q0); %defines the number of degrees of robot
+
+
+%Define desire angular motion path for robot with given rotation angles for
+%linkages one and two. 
+
+Angle1 = [-135.46:1:27.34]; %given start revolute joint 1 angle to end revolute joint 1 angle
+Angle2 = [20.80:1:90.75]; % given start revolute joint 2 angle to end revolute joint 2 angle
+
+if length(Angle1) < length(Angle2)
+    bigCountNum = length(Angle2);
+    smlCountNum = length(Angle1); 
+    px = length(Angle2);
+    py = length(Angle2);
+    r = length(Angle2);
+    
+elseif length(Angle1) > length(Angle2)
+    smlCountNum = length(Angle2);
+    bigCountNum = length(Angle1); 
+    px = length(Angle1);
+    py = length(Angle1); 
+    
+    r = length(Angle1);
+end 
+
+
+
+%% Define the path for robot creating points relative to angle 1 and angle 2
+
+%Compute the points for the robot 
+qpoint = zeros(bigCountNum,3); 
+for i = 1:smlCountNum
+   for j =1:bigCountNum
+      px(j) = a1*cosd(Angle1(j))+a2*cosd(Angle1(j)+Angle2(i)); %inverse kinematics to find px 
+      py(j) = a1*sind(Angle1(j))+a2*sind(Angle1(j)+Angle2(i)); %inverse kinematics to find py
+      r(j) = sqrt(px(j)^2+py(j)^2); %sum the hypotenuse 
+      if r(j) ~= 0 % verify that px and py both cannot be zero
+          qpoint(j,1) = px(j);
+          qpoint(j,2)= py(j);
+      end 
+   end     
+end 
+
+qInitial = q0; 
+qs = q0; 
+ik = inverseKinematics('RigidBodyTree',robot); 
+weights = [0,0,0,1,1,0];
+endEffector = 'Link_4'; 
+
+
+%% Inverse Kinematics Solution 
+
+for i = 1:length(qpoint)
+    % Solve for the configuration satisfying the desired end effector
+    % position
+    point = qpoint(i,:);
+    qSol = ik(endEffector,trvec2tform(point),weights,qInitial); %pass down parameters to Inverse Kinematics function
+    % Store the configuration
+    qs(i,:) = qSol;
+    % Start from prior solution
+    qInitial = qSol;
+end
+
+
+%% Set up Simulation for SCARA Robot 
+figure
+show(robot,qs(1,:)');
+view(2)
+ax = gca;
+ax.Projection = 'orthographic';
+hold on
+plot(qpoint(:,1),qpoint(:,2),'k')
+axis([-0.1 0.7 -0.3 0.5])
+
+%% Execute Simulation for SCARA Robot 
+framesPerSecond = 15;
+r = rateControl(framesPerSecond);
+t = (0:0.2:30)'; % Time
+count = length(t)
+for i = 1:count
+    show(robot,qs(i,:)','PreservePlot',false);
+    drawnow
+    waitfor(r);
+end
